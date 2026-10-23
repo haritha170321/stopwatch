@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="High-precision digital stopwatch web application demonstrating OOP design principles, monotonic elapsed-time calculations, lap tracking, best/slowest lap analysis, and CSV export.">
+  <title>Stopwatch Application | Java OOP Mini-Project Web Edition</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏱️</text></svg>">
+
+  <!-- Modern Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-wrapper">
+    <!-- Top Navigation / Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">⏱️</div>
+        <div class="brand-text">
+          <h1 class="brand-title">Stopwatch Application</h1>
+          <p class="brand-subtitle">OOP Concepts in Java &bull; Web Edition</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btnHistory" class="btn-icon" title="View Saved Session History (H)" aria-label="Session History">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 14 14 14"/></svg>
+          <span class="btn-text-desktop">History</span>
+        </button>
+        <button id="btnShortcutsHelp" class="btn-icon" title="View Keyboard Shortcuts (or press ?)" aria-label="Keyboard Shortcuts">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><path d="M6 8h.001"/><path d="M10 8h.001"/><path d="M14 8h.001"/><path d="M18 8h.001"/><path d="M8 12h.001"/><path d="M12 12h.001"/><path d="M16 12h.001"/><path d="M7 16h10"/></svg>
+          <span class="btn-text-desktop">Shortcuts</span>
+        </button>
+        <button id="btnThemeToggle" class="btn-icon" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
+          <span id="themeIcon" aria-hidden="true">☀️</span>
+          <span id="themeLabel" class="btn-text-desktop">Light Mode</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- Main Stopwatch Card -->
+      <section class="card timer-card" aria-labelledby="timerHeading">
+        <div class="timer-card-header">
+          <div class="status-indicator-wrapper">
+            <span id="stateBadge" class="status-badge state-reset">RESET</span>
+            <span id="accuracyBadge" class="accuracy-badge" title="Timing based on monotonic performance.now() clock">Monotonic Clock Active</span>
+          </div>
+          <h2 id="timerHeading" class="sr-only">Digital Timer Display</h2>
+        </div>
+
+        <!-- Large Digital Timer Readout -->
+        <div class="timer-display-container">
+          <div id="timeDisplay" class="digital-display" aria-live="polite" aria-atomic="true">
+            00:00:00.000
+          </div>
+          <p class="time-subtext">HOURS : MINUTES : SECONDS . MILLISECONDS</p>
+        </div>
+
+        <!-- Performance Summary Badges -->
+        <div class="stats-grid">
+          <div class="stat-pill" id="statPillBest">
+            <span class="stat-label">Best (Fastest) Lap</span>
+            <span id="statBestLap" class="stat-value stat-muted">--</span>
+          </div>
+          <div class="stat-pill" id="statPillSlowest">
+            <span class="stat-label">Slowest Lap</span>
+            <span id="statSlowestLap" class="stat-value stat-muted">--</span>
+          </div>
+          <div class="stat-pill" id="statPillTotal">
+            <span class="stat-label">Total Laps</span>
+            <span id="statTotalLaps" class="stat-value">0</span>
+          </div>
+        </div>
+
+        <!-- Primary Control Buttons -->
+        <div class="controls-toolbar" role="group" aria-label="Stopwatch Controls">
+          <button id="btnStart" class="btn btn-primary" title="Start Stopwatch (Space)">
+            <svg class="btn-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Start</span>
+          </button>
+          <button id="btnPause" class="btn btn-warning" title="Pause Stopwatch (Space)" disabled>
+            <svg class="btn-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            <span>Pause</span>
+          </button>
+          <button id="btnResume" class="btn btn-success" title="Resume Timing (Space)" style="display: none;">
+            <svg class="btn-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Resume</span>
+          </button>
+          <button id="btnLap" class="btn btn-purple" title="Record Lap Split (L)" disabled>
+            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+            <span>Lap</span>
+          </button>
+          <button id="btnReset" class="btn btn-danger" title="Reset Stopwatch (R)" disabled>
+            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg>
+            <span>Reset</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Lap Records & Split Analysis Card -->
+      <section class="card laps-card" aria-labelledby="lapsHeading">
+        <div class="laps-header">
+          <div class="laps-header-title">
+            <h2 id="lapsHeading">Lap Records &amp; Split Analysis</h2>
+            <span id="lapsCountBadge" class="count-pill">0 Laps</span>
+          </div>
+          <div class="laps-actions">
+            <button id="btnLapWithNote" class="btn-secondary" title="Record a lap with custom note" disabled>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              <span>Lap with Note</span>
+            </button>
+            <button id="btnExportCsv" class="btn-secondary" title="Export lap data to CSV spreadsheet" disabled>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Export CSV</span>
+            </button>
+            <button id="btnClearLaps" class="btn-secondary btn-danger-soft" title="Clear recorded laps (C)" disabled>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <span>Clear Laps</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Lap Table Container -->
+        <div class="table-container" tabindex="0" aria-label="Lap Split Records Table">
+          <table id="lapsTable" class="laps-table">
+            <thead>
+              <tr>
+                <th scope="col" style="width: 80px;">Lap #</th>
+                <th scope="col" style="width: 170px;">Split Time</th>
+                <th scope="col" style="width: 170px;">Total Elapsed</th>
+                <th scope="col" style="width: 140px;">Status</th>
+                <th scope="col">Note / Description</th>
+              </tr>
+            </thead>
+            <tbody id="lapsTableBody">
+              <tr class="empty-row" id="emptyLapsRow">
+                <td colspan="5">
+                  <div class="empty-state">
+                    <span class="empty-icon" aria-hidden="true">⏱️</span>
+                    <p class="empty-title">No Laps Recorded Yet</p>
+                    <p class="empty-desc">Click <strong>Start</strong> and then <strong>Lap</strong> (or press <strong>L</strong>) to record split times.</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- OOP Concepts Architecture & Features Grid -->
+      <section class="info-section">
+        <div class="card info-card">
+          <div class="info-card-header">
+            <h3>Object-Oriented Programming (OOP) Architecture</h3>
+            <span class="badge-pill">Academic Demonstration</span>
+          </div>
+          <p class="info-intro">
+            This web application mirrors the architectural concepts implemented in the companion Java Swing desktop application:
+          </p>
+          <div class="oop-grid">
+            <div class="oop-item">
+              <div class="oop-icon">🛡️</div>
+              <div class="oop-content">
+                <h4>Encapsulation</h4>
+                <p>Timing state, start timestamps, and accumulated duration are encapsulated within dedicated classes/modules, with controlled accessors preventing direct external tampering.</p>
+              </div>
+            </div>
+            <div class="oop-item">
+              <div class="oop-icon">🧩</div>
+              <div class="oop-content">
+                <h4>Abstraction</h4>
+                <p>Clock interfaces expose high-level operations (<code>start</code>, <code>pause</code>, <code>resume</code>, <code>recordLap</code>) while abstracting the monotonic hardware time synchronization details.</p>
+              </div>
+            </div>
+            <div class="oop-item">
+              <div class="oop-icon">⚡</div>
+              <div class="oop-content">
+                <h4>High Precision Timing</h4>
+                <p>Calculates elapsed duration via <code>performance.now()</code> monotonic timestamps rather than counting tick intervals, avoiding browser background throttling drift.</p>
+              </div>
+            </div>
+            <div class="oop-item">
+              <div class="oop-icon">📊</div>
+              <div class="oop-content">
+                <h4>Composition & Analytics</h4>
+                <p>Stopwatch contains an unmodifiable record of <code>Lap</code> entities, enabling automatic minimum/maximum split evaluation and CSV data transformation.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-content">
+        <p class="footer-title"><strong>Stopwatch Application Using OOP Concepts in Java</strong> &bull; Web Edition</p>
+        <p class="footer-sub">Engineered as a clean, responsive static companion web application with zero external framework dependencies.</p>
+        <p class="footer-meta">Accurate Monotonic Clock &bull; Client-Side Static Architecture &bull; Ready for Render Deployment</p>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Keyboard Shortcuts Modal -->
+  <div id="shortcutsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalTitle">Keyboard Shortcuts</h3>
+        <button id="btnCloseModal" class="btn-close" aria-label="Close shortcuts modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Control the stopwatch quickly with these hotkeys:</p>
+        <ul class="shortcuts-list">
+          <li>
+            <kbd>Space</kbd>
+            <span>Start, Pause, or Resume stopwatch</span>
+          </li>
+          <li>
+            <kbd>L</kbd>
+            <span>Record Lap split time</span>
+          </li>
+          <li>
+            <kbd>N</kbd>
+            <span>Record Lap with custom note</span>
+          </li>
+          <li>
+            <kbd>R</kbd>
+            <span>Reset stopwatch (prompts if laps exist)</span>
+          </li>
+          <li>
+            <kbd>C</kbd>
+            <span>Clear recorded laps</span>
+          </li>
+          <li>
+            <kbd>E</kbd>
+            <span>Export laps to CSV</span>
+          </li>
+          <li>
+            <kbd>T</kbd>
+            <span>Toggle Light / Dark mode</span>
+          </li>
+          <li>
+            <kbd>H</kbd>
+            <span>Open Session History</span>
+          </li>
+          <li>
+            <kbd>?</kbd>
+            <span>Toggle this help dialog</span>
+          </li>
+          <li>
+            <kbd>Esc</kbd>
+            <span>Close modal</span>
+          </li>
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button id="btnModalDismiss" class="btn btn-primary" style="padding: 8px 20px; font-size: 13px;">Got It</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lap Note Input Modal -->
+  <div id="noteModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="noteModalTitle" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="noteModalTitle">Record Lap with Note</h3>
+        <button id="btnCloseNoteModal" class="btn-close" aria-label="Close note modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label for="txtLapNote" class="form-label" id="lblLapNotePrompt">Description for Lap #1:</label>
+        <input type="text" id="txtLapNote" class="form-input" placeholder="e.g., Warm-up, Sprint 1, Interval..." maxlength="60" autocomplete="off">
+      </div>
+      <div class="modal-footer">
+        <button id="btnCancelNote" class="btn-secondary">Cancel</button>
+        <button id="btnConfirmNote" class="btn btn-primary">Save Lap</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Session History Modal -->
+  <div id="historyModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="historyModalTitle" style="display: none;">
+    <div class="modal-card modal-card-large">
+      <div class="modal-header">
+        <div>
+          <h3 id="historyModalTitle">Stopwatch Session History</h3>
+          <p class="modal-subtitle">Stored in browser localStorage &bull; Persistent across page reloads</p>
+        </div>
+        <button id="btnCloseHistoryModal" class="btn-close" aria-label="Close history modal">&times;</button>
+      </div>
+      <div class="modal-body history-body">
+        <!-- Search bar & stats -->
+        <div class="history-toolbar">
+          <input type="text" id="txtHistorySearch" class="form-input" placeholder="Search sessions by name or date (YYYY-MM-DD)..." aria-label="Search History">
+          <span id="historyCountBadge" class="count-pill">0 Sessions</span>
+        </div>
+        
+        <!-- Sessions Table Container -->
+        <div class="table-container history-table-container">
+          <table class="laps-table history-table">
+            <thead>
+              <tr>
+                <th style="width: 50px;">#</th>
+                <th style="width: 150px;">Date &amp; Time</th>
+                <th style="width: 120px;">Duration</th>
+                <th style="width: 70px;">Laps</th>
+                <th style="width: 140px;">Best Lap</th>
+                <th>Session Name / Note</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody">
+              <!-- Dynamically populated or empty state -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Selected Session Detail Section -->
+        <div id="historyDetailSection" class="history-detail-card" style="display: none;">
+          <div class="history-detail-header">
+            <h4 id="lblHistoryDetailTitle">Session Lap Splits</h4>
+            <div class="history-detail-actions">
+              <button id="btnRenameSession" class="btn-secondary" title="Rename this session">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                <span>Rename Session</span>
+              </button>
+              <button id="btnExportHistorySessionCsv" class="btn-secondary" title="Export this session to CSV">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Export CSV</span>
+              </button>
+              <button id="btnDeleteHistorySession" class="btn-secondary btn-danger-soft" title="Delete this session">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                <span>Delete</span>
+              </button>
+            </div>
+          </div>
+          <div class="table-container history-laps-container">
+            <table class="laps-table">
+              <thead>
+                <tr>
+                  <th style="width: 70px;">Lap #</th>
+                  <th style="width: 140px;">Split Time</th>
+                  <th style="width: 140px;">Total Elapsed</th>
+                  <th style="width: 110px;">Status</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody id="historyDetailLapsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer history-footer">
+        <button id="btnClearAllHistory" class="btn-secondary btn-danger-soft">Clear All History</button>
+        <button id="btnCloseHistoryModalBtn" class="btn btn-primary" style="padding: 8px 22px; font-size: 13px;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rename Session Modal -->
+  <div id="renameModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="renameModalTitle" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="renameModalTitle">Rename Session</h3>
+        <button id="btnCloseRenameModal" class="btn-close" aria-label="Close rename modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label for="txtNewSessionName" class="form-label">Enter new name for this session:</label>
+        <input type="text" id="txtNewSessionName" class="form-input" placeholder="e.g. Morning Practice, Running Practice" maxlength="60" autocomplete="off">
+      </div>
+      <div class="modal-footer">
+        <button id="btnCancelRename" class="btn-secondary">Cancel</button>
+        <button id="btnConfirmRename" class="btn btn-primary">Save Name</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Confirm Modal -->
+  <div id="confirmModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="confirmModalTitle">Confirmation</h3>
+        <button id="btnCloseConfirmModal" class="btn-close" aria-label="Close confirmation modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmModalMessage">Are you sure you want to proceed?</p>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCancelConfirm" class="btn-secondary">Cancel</button>
+        <button id="btnAcceptConfirm" class="btn btn-danger">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastNotification" class="toast" role="status" aria-live="polite" style="display: none;"></div>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
